@@ -118,11 +118,17 @@ class KunaCamera(Camera):
     def _ready_for_snapshot(self, now):
         return self._next_snapshot_at is None or now > self._next_snapshot_at
 
-    async def async_camera_image(self):
+    async def async_camera_image(self, width: int | None = None, height: int | None = None):
         """Get and return an image from the camera, only once every stream_interval seconds."""
         stream_interval = timedelta(seconds=self._config[CONF_STREAM_INTERVAL])
         now = utcnow()
+        
         if self._ready_for_snapshot(now):
-            self._last_image = await self._camera.get_thumbnail()
-            self._next_snapshot_at = now + stream_interval
+            try:
+                self._last_image = await self._camera.get_thumbnail()
+                self._next_snapshot_at = now + stream_interval
+            except Exception as e:
+                _LOGGER.error(f"Error fetching thumbnail for {self.name}: {str(e)}")
+                self._last_image = None
+                return None
         return self._last_image
